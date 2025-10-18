@@ -1,69 +1,114 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tanzimat Dönemi – 10 Soru (1 dk/soru)</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <main class="container" id="app">
-    <header class="header">
-      <h1>Tanzimat Dönemi – İnteraktif Quiz</h1>
-      <p class="topic">1839–1878: Tanzimat & Islahat Fermanları, idare-hukuk-eğitim-basın, Kanun-i Esasi</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tanzimat Dönemi – 10 Soru (1 dk/soru)</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container" id="app">
+      <header class="header">
+        <h1>Tanzimat Dönemi – İnteraktif Quiz</h1>
+        <p class="topic">
+          1839–1878: Tanzimat & Islahat Fermanları, idare-hukuk-eğitim-basın,
+          Kanun-i Esasi
+        </p>
 
-      <div class="meta">
-        <div class="pill" id="timer" aria-live="polite">⏳ 01:00</div>
-        <div class="pill" id="progress">Soru 1 / 10</div>
-        <div class="pill" id="score">Puan: 0</div>
-        <button id="restartBtn" class="btn ghost small" type="button">Sıfırla</button>
+        <div class="meta">
+          <div class="pill" id="timer" aria-live="polite">⏳ 01:00</div>
+          <div class="pill" id="progress">Soru 1 / 10</div>
+          <div class="pill" id="score">Puan: 0</div>
+          <button id="restartBtn" class="btn ghost small" type="button">
+            Sıfırla
+          </button>
 
-        <div class="toolbar">
-          <button id="themeToggle" class="btn small" type="button" title="Tema: Sistem → Koyu → Açık" aria-pressed="true">🌙/☀️</button>
-          <div class="font-controls" role="group" aria-label="Yazı Boyutu">
-            <button id="fontMinus" class="btn small" type="button" title="Yazıyı küçült">A–</button>
-            <button id="fontPlus" class="btn small" type="button" title="Yazıyı büyüt">A+</button>
+          <div class="toolbar">
+            <button
+              id="themeToggle"
+              class="btn small"
+              type="button"
+              title="Tema: Sistem → Koyu → Açık"
+              aria-pressed="true"
+            >
+              🌙/☀️
+            </button>
+            <div class="font-controls" role="group" aria-label="Yazı Boyutu">
+              <button
+                id="fontMinus"
+                class="btn small"
+                type="button"
+                title="Yazıyı küçült"
+              >
+                A–
+              </button>
+              <button
+                id="fontPlus"
+                class="btn small"
+                type="button"
+                title="Yazıyı büyüt"
+              >
+                A+
+              </button>
+            </div>
+            <button
+              id="ttsToggle"
+              class="btn small"
+              type="button"
+              title="Sesli Oku/Durdur"
+            >
+              🔊
+            </button>
           </div>
-          <button id="ttsToggle" class="btn small" type="button" title="Sesli Oku/Durdur">🔊</button>
         </div>
-      </div>
-    </header>
+      </header>
 
-    <section class="card" aria-labelledby="q-title">
-      <h2 id="q-title" class="question">Yükleniyor…</h2>
+      <section class="card" aria-labelledby="q-title">
+        <h2 id="q-title" class="question">Yükleniyor…</h2>
 
-      <form id="quizForm" class="quiz" autocomplete="off">
-        <fieldset id="optionsFieldset"></fieldset>
-      </form>
+        <form id="quizForm" class="quiz" autocomplete="off">
+          <fieldset id="optionsFieldset"></fieldset>
+        </form>
 
-      <div class="actions">
-        <button id="submitBtn" class="btn primary" type="button">Cevabı Onayla</button>
-        <button id="nextBtn" class="btn secondary" type="button" disabled>Sonraki Soru</button>
-        <button id="showSolutionBtn" class="btn ghost" type="button">Çözümü Göster</button>
-      </div>
+        <div class="actions">
+          <button id="submitBtn" class="btn primary" type="button">
+            Cevabı Onayla
+          </button>
+          <button id="nextBtn" class="btn secondary" type="button" disabled>
+            Sonraki Soru
+          </button>
+          <button id="showSolutionBtn" class="btn ghost" type="button">
+            Çözümü Göster
+          </button>
+        </div>
 
-      <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+        <div
+          id="feedback"
+          class="feedback"
+          role="status"
+          aria-live="polite"
+        ></div>
 
-      <details id="solutionBox" class="solution" hidden>
-        <summary>Çözüm / Açıklama</summary>
-        <div id="solutionText"></div>
-      </details>
-    </section>
+        <details id="solutionBox" class="solution" hidden>
+          <summary>Çözüm / Açıklama</summary>
+          <div id="solutionText"></div>
+        </details>
+      </section>
 
-    <section id="resultCard" class="card result" hidden aria-live="polite">
-      <h2>Quiz Bitti ✅</h2>
-      <p id="scoreLine">Puanınız: –</p>
-      <p class="tiny muted">Her soru 1 dakikaydı; soru değişince sayaç sıfırlandı.</p>
-      <div class="result-actions">
-        <button id="playAgainBtn" class="btn primary" type="button">Tekrar Oyna</button>
-      </div>
-    </section>
+      <section id="resultCard" class="card result" hidden aria-live="polite">
+        <h2>Quiz Bitti ✅</h2>
+        <p id="scoreLine">Puanınız: –</p>
+        <p class="tiny muted">
+          Her soru 1 dakikaydı; soru değişince sayaç sıfırlandı.
+        </p>
+        <div class="result-actions">
+          <button id="playAgainBtn" class="btn primary" type="button">
+            Tekrar Oyna
+          </button>
+        </div>
+      </section>
+    </main>
 
-    <footer class="footer">
-      <p class="tiny">Klavye: <kbd>Tab</kbd> ile gez, <kbd>Enter</kbd>/<kbd>Space</kbd> ile işaretle, <kbd>Enter</kbd> ile onayla.</p>
-    </footer>
-  </main>
-
-  <script src="script.js"></script>
-</body>
+    <script src="script.js"></script>
+  </body>
 </html>
