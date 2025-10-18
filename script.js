@@ -10,6 +10,12 @@ const QUIZ_KEY = 'tanzimat-quiz';
 const SETTINGS_KEY = `${QUIZ_KEY}:settings`;
 const DEFAULT_SETTINGS = { fontScale: 1, tts: false };
 
+// Google Gemini API Configuration
+const GEMINI_API_KEY = 'AIzaSyCX7fDvq6hm7a1RE190Bk1c675IvLDtRcY'; // Buraya API key'inizi yazın
+// Google Cloud AI Companion API endpoint (with CORS proxy)
+const GEMINI_API_URL =
+  'https://cors-anywhere.herokuapp.com/https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
 let settings = loadSettings();
 function loadSettings() {
   try {
@@ -56,6 +62,7 @@ let state = {
   secondsLeft: QUESTION_DURATION,
   timerId: null,
   score: 0,
+  wrongAnswers: [], // Yanlış cevapları takip et
 };
 
 /* ===============================
@@ -350,6 +357,399 @@ function applyFont() {
 }
 
 /* ===============================
+   GOOGLE GEMINI AI ANALİZ
+==================================*/
+
+// Mevcut modelleri kontrol et
+async function checkAvailableModels() {
+  const endpoints = [
+    `https://cloudaicompanion.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`,
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      console.log('🔍 Checking models at:', endpoint);
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      console.log('Available models:', data);
+      return data;
+    } catch (error) {
+      console.log('❌ Endpoint failed:', endpoint, error.message);
+    }
+  }
+
+  console.error('❌ All model check endpoints failed');
+  return null;
+}
+
+// CORS test fonksiyonu
+async function testCORS() {
+  const testEndpoints = [
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+    'https://cors-anywhere.herokuapp.com/https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+    'https://api.allorigins.win/raw?url=' +
+      encodeURIComponent(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
+      ),
+  ];
+
+  console.log('🔄 Testing CORS endpoints...');
+
+  for (const endpoint of testEndpoints) {
+    try {
+      console.log('🔍 Testing:', endpoint);
+      const response = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Test' }] }],
+        }),
+      });
+
+      if (response.ok) {
+        console.log('✅ CORS working endpoint:', endpoint);
+        return endpoint;
+      } else {
+        console.log('❌ Endpoint failed:', endpoint, response.status);
+      }
+    } catch (error) {
+      console.log('❌ CORS error:', endpoint, error.message);
+    }
+  }
+
+  console.log('❌ All CORS endpoints failed');
+  return null;
+}
+
+// API Key detaylarını kontrol et
+async function checkAPIKeyDetails() {
+  console.log('🔑 API Key:', GEMINI_API_KEY);
+  console.log('🔗 API URL:', GEMINI_API_URL);
+
+  // CORS test yap
+  const workingEndpoint = await testCORS();
+  if (workingEndpoint) {
+    console.log('🎯 Using working endpoint:', workingEndpoint);
+  }
+
+  try {
+    // Önce modelleri kontrol et
+    const models = await checkAvailableModels();
+
+    if (models && models.models) {
+      const generateContentModels = models.models.filter(
+        (m) =>
+          m.supportedGenerationMethods &&
+          m.supportedGenerationMethods.includes('generateContent')
+      );
+
+      console.log(
+        '✅ Available models for generateContent:',
+        generateContentModels
+      );
+
+      if (generateContentModels.length > 0) {
+        console.log('🎯 Recommended model:', generateContentModels[0].name);
+        return generateContentModels[0].name;
+      }
+    }
+
+    // Eğer model bulunamazsa, farklı endpoint'leri dene
+    const alternativeEndpoints = [
+      'https://cloudaicompanion.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+      'https://cloudaicompanion.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
+    ];
+
+    console.log('🔄 Testing alternative endpoints...');
+
+    for (const endpoint of alternativeEndpoints) {
+      try {
+        const testResponse = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Test' }] }],
+          }),
+        });
+
+        if (testResponse.ok) {
+          console.log('✅ Working endpoint found:', endpoint);
+          return endpoint;
+        } else {
+          console.log('❌ Endpoint failed:', endpoint, testResponse.status);
+        }
+      } catch (error) {
+        console.log('❌ Endpoint error:', endpoint, error.message);
+      }
+    }
+  } catch (error) {
+    console.error('❌ API Key check failed:', error);
+  }
+
+  return null;
+}
+async function analyzeQuizResults(score, wrongAnswers) {
+  if (
+    GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY' ||
+    !GEMINI_API_KEY.startsWith('AIza')
+  ) {
+    return {
+      analysis:
+        "API key ayarlanmadı veya geçersiz format. Lütfen Google AI Studio'dan geçerli bir API key alın.",
+      recommendations: [
+        "Google AI Studio'ya gidin",
+        'Yeni API key oluşturun',
+        "API key'i script.js'e yapıştırın",
+      ],
+    };
+  }
+
+  // Önce mevcut modelleri kontrol et
+  const models = await checkAvailableModels();
+  if (models && models.models) {
+    console.log(
+      'Available models for generateContent:',
+      models.models.filter(
+        (m) =>
+          m.supportedGenerationMethods &&
+          m.supportedGenerationMethods.includes('generateContent')
+      )
+    );
+  }
+
+  try {
+    const wrongTopics = wrongAnswers.map(
+      (answer) => answer.topic || answer.question
+    );
+    const prompt = `
+Sen bir eğitim danışmanısın. Kullanıcı Tanzimat Dönemi (1839-1878) konusunda quiz çözdü ve ${score}/100 puan aldı.
+
+Yanlış cevapladığı konular: ${wrongTopics.join(', ')}
+
+Lütfen şunları analiz et:
+1. Genel performans değerlendirmesi (çok iyi/iyi/orta/zayıf)
+2. Hangi konuları tekrar çalışması gerektiği
+3. Öncelik sırasına göre çalışma önerileri
+4. Motivasyon verici kısa bir mesaj
+
+Türkçe yanıt ver ve kısa, net öneriler sun. HTML formatında yanıtla.
+    `;
+
+    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        },
+        safetySettings: [
+          {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Response Error:', errorText);
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('API Response:', data);
+
+    if (
+      !data.candidates ||
+      !data.candidates[0] ||
+      !data.candidates[0].content
+    ) {
+      throw new Error('Invalid API response format');
+    }
+
+    const analysis = data.candidates[0].content.parts[0].text;
+
+    return {
+      analysis: analysis,
+      recommendations: extractRecommendations(analysis),
+    };
+  } catch (error) {
+    console.error('Gemini API Error:', error);
+    console.error('API Key:', GEMINI_API_KEY);
+    console.error('Response:', error.message);
+
+    return {
+      analysis: `Analiz yapılırken bir hata oluştu: ${error.message}. API key'inizi kontrol edin.`,
+      recommendations: [
+        'API key formatını kontrol edin',
+        "Google AI Studio'dan yeni key alın",
+        'İnternet bağlantınızı kontrol edin',
+      ],
+    };
+  }
+}
+
+function extractRecommendations(analysis) {
+  // Analiz metninden önerileri çıkar
+  const lines = analysis.split('\n').filter((line) => line.trim());
+  const recommendations = [];
+
+  lines.forEach((line) => {
+    if (
+      line.includes('•') ||
+      line.includes('-') ||
+      line.includes('1.') ||
+      line.includes('2.')
+    ) {
+      const cleanLine = line.replace(/^[\d\-\•\s]+/, '').trim();
+      if (cleanLine.length > 0) {
+        recommendations.push(cleanLine);
+      }
+    }
+  });
+
+  return recommendations.length > 0
+    ? recommendations
+    : ['Detaylı analiz için tekrar deneyin'];
+}
+
+function showAIAnalysis(score, wrongAnswers) {
+  const analysisContainer = document.getElementById('aiAnalysis');
+  if (!analysisContainer) return Promise.reject('Analysis container not found');
+
+  analysisContainer.innerHTML =
+    '<div class="loading">🤖 Analiz yapılıyor...</div>';
+  analysisContainer.style.display = 'block';
+
+  return analyzeQuizResults(score, wrongAnswers).then((result) => {
+    analysisContainer.innerHTML = `
+      <div class="ai-analysis">
+        <h3>🤖 Yapay Zeka Analizi</h3>
+        <div class="analysis-content">${result.analysis}</div>
+        <div class="recommendations">
+          <h4>📚 Öneriler:</h4>
+          <ul>
+            ${result.recommendations.map((rec) => `<li>${rec}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+    `;
+  });
+}
+
+function showBasicAnalysis(score, wrongAnswers) {
+  const analysisContainer = document.getElementById('aiAnalysis');
+  if (!analysisContainer) return;
+
+  let performance = '';
+  if (score >= 90) performance = 'Mükemmel! 🌟';
+  else if (score >= 80) performance = 'Çok İyi! 👏';
+  else if (score >= 70) performance = 'İyi! 👍';
+  else if (score >= 60) performance = 'Orta 📚';
+  else performance = 'Geliştirilmeli 🔄';
+
+  // Konu ID'lerini gerçek konu isimlerine çevir
+  const topicNames = {
+    'tan-01': 'Tanzimat Fermanı (1839)',
+    'tan-02': 'Islahat Fermanı (1856)',
+    'tan-03': 'Tanzimat Dönemi Yenilikleri',
+    'tan-04': 'Tanzimat Dönemi Edebiyatı',
+    'tan-05': 'Tanzimat Dönemi Eğitim',
+    'tan-06': 'Tanzimat Dönemi Hukuk',
+    'tan-07': 'Tanzimat Dönemi Ekonomi',
+    'tan-08': 'Tanzimat Dönemi Askeri',
+    'tan-09': 'Tanzimat Dönemi Sosyal Hayat',
+    'tan-10': 'Tanzimat Dönemi Sonuçları',
+  };
+
+  const wrongTopics = wrongAnswers
+    .map((answer) => answer.topic)
+    .filter((topic, index, arr) => arr.indexOf(topic) === index)
+    .map((topic) => topicNames[topic] || topic); // ID varsa ismi, yoksa ID'yi kullan
+
+  // Performans değerlendirmesi
+  let detailedAnalysis = '';
+  if (score >= 90) {
+    detailedAnalysis =
+      'Harika bir performans! Tanzimat Dönemi konusunda çok iyi bir seviyedesiniz.';
+  } else if (score >= 80) {
+    detailedAnalysis =
+      'Çok iyi bir performans! Sadece birkaç konuyu tekrar gözden geçirmeniz yeterli.';
+  } else if (score >= 70) {
+    detailedAnalysis =
+      'İyi bir performans! Bazı konuları daha detaylı çalışmanız faydalı olacak.';
+  } else if (score >= 60) {
+    detailedAnalysis =
+      'Orta seviyede bir performans. Konuları daha sistematik çalışmanızı öneriyoruz.';
+  } else {
+    detailedAnalysis =
+      'Bu konuları daha detaylı çalışmanız gerekiyor. Temel kavramları tekrar gözden geçirin.';
+  }
+
+  analysisContainer.innerHTML = `
+    <div class="ai-analysis">
+      <h3>📊 Performans Analizi</h3>
+      <div class="analysis-content">
+        <p><strong>Genel Değerlendirme:</strong> ${performance}</p>
+        <p><strong>Puanınız:</strong> ${score}/100</p>
+        <p><strong>Detaylı Analiz:</strong> ${detailedAnalysis}</p>
+        ${
+          wrongTopics.length > 0
+            ? `<p><strong>Tekrar Çalışmanız Gereken Konular:</strong></p>`
+            : ''
+        }
+      </div>
+      <div class="recommendations">
+        <h4>📚 Öneriler:</h4>
+        <ul>
+          ${wrongTopics
+            .map(
+              (topic) =>
+                `<li><strong>${topic}</strong> konusunu tekrar çalışın</li>`
+            )
+            .join('')}
+          <li>Quiz'i tekrar çözerek pratik yapın</li>
+          <li>Yanlış cevapladığınız soruların açıklamalarını inceleyin</li>
+          <li>Her konuyu çalıştıktan sonra o konuya özel soruları tekrar çözün</li>
+          <li>Kronolojik sırayı takip ederek çalışın (1839-1878)</li>
+        </ul>
+      </div>
+    </div>
+  `;
+  analysisContainer.style.display = 'block';
+}
+
+/* ===============================
    TTS (Sesli Oku)
 ==================================*/
 function supportsTTS() {
@@ -497,10 +897,21 @@ function evaluate() {
   } else {
     // For incorrect answers, don't show hints or solution immediately
     el.feedback.textContent =
-      'Tam değil. Tekrar deneyin veya çözümü görmek için "Çözümü Göster" butonuna tıklayın.';
+      'Lütfen tekrar deneyin veya çözümü görmek için "Çözümü Göster" butonuna tıklayın.';
     el.feedback.className = 'feedback err';
     el.solutionBox.hidden = true; // Don't show solution immediately for incorrect answers
     el.solutionText.innerHTML = '';
+
+    // Track wrong answer for AI analysis
+    state.wrongAnswers.push({
+      question: q.q,
+      topic: q.id,
+      selectedAnswer: q.options[sel].text,
+      correctAnswer: q.options[correctIdx].text,
+    });
+
+    // Enable "Sonraki Soru" button for incorrect answers too
+    el.nextBtn.disabled = false;
 
     // Add Try Again button for incorrect answers
     if (!el.fieldset.querySelector('.try-again-btn')) {
@@ -520,6 +931,12 @@ function evaluate() {
         el.showSolutionBtn.disabled = true;
         tryAgainBtn.remove();
         lockChoices(false);
+
+        // Reset "Sıfırla" button color to normal
+        el.restartBtn.style.color = '';
+
+        // Start timer again
+        startTimer();
       });
       el.fieldset.appendChild(tryAgainBtn);
     }
@@ -545,8 +962,9 @@ function showSolution() {
   }
 
   const sel = Number(selEl.dataset.optionIndex);
-  showExplain(q, sel, true);
-  if (sel !== correctIdx) showExplain(q, correctIdx, true);
+
+  // Show explanations for all options when solution is requested
+  q.options.forEach((_, i) => showExplain(q, i, true));
 
   el.solutionText.innerHTML = `<strong>Doğru cevap:</strong> ${q.options[correctIdx].text}<br><br>${q.options[correctIdx].explain}`;
   el.solutionBox.hidden = false;
@@ -572,6 +990,38 @@ function handleTimeUp() {
   el.solutionBox.hidden = true;
   el.solutionText.innerHTML = '';
   lockChoices(true);
+
+  // Make "Sıfırla" button text red
+  el.restartBtn.style.color = 'var(--err)';
+
+  // Add "Try Again" button for time up
+  if (!el.fieldset.querySelector('.try-again-btn')) {
+    const tryAgainBtn = document.createElement('button');
+    tryAgainBtn.className = 'btn secondary try-again-btn';
+    tryAgainBtn.textContent = 'Tekrar Dene';
+    tryAgainBtn.addEventListener('click', () => {
+      el.fieldset
+        .querySelectorAll('.option')
+        .forEach((opt) => opt.classList.remove('selected'));
+      el.feedback.textContent = '';
+      el.feedback.className = 'feedback';
+      el.solutionBox.hidden = true;
+      el.solutionText.innerHTML = '';
+      el.nextBtn.disabled = true;
+      el.submitBtn.disabled = true;
+      el.showSolutionBtn.disabled = true;
+      tryAgainBtn.remove();
+      lockChoices(false);
+
+      // Reset "Sıfırla" button color to normal
+      el.restartBtn.style.color = '';
+
+      // Start timer again
+      startTimer();
+    });
+    el.fieldset.appendChild(tryAgainBtn);
+  }
+
   // Don't enable next button when time runs out - user must select an option first
 }
 
@@ -589,6 +1039,16 @@ function finishQuiz() {
   lockChoices(true);
   el.resultCard.hidden = false;
   el.scoreLine.textContent = `Puanınız: ${state.score} / 100`;
+
+  // Show AI analysis (with fallback to basic analysis)
+  // Temporarily using basic analysis due to CORS issues
+  showBasicAnalysis(state.score, state.wrongAnswers);
+
+  // Uncomment below to try AI analysis again
+  // showAIAnalysis(state.score, state.wrongAnswers).catch((error) => {
+  //   console.error('AI Analysis failed, showing basic analysis:', error);
+  //   showBasicAnalysis(state.score, state.wrongAnswers);
+  // });
 }
 
 /* ===============================
@@ -666,7 +1126,15 @@ function startQuiz() {
   state.questions = buildQuestions();
   state.index = 0;
   state.score = 0;
+  state.wrongAnswers = []; // Reset wrong answers
   el.resultCard.hidden = true;
+
+  // Reset "Sıfırla" button color to normal
+  el.restartBtn.style.color = '';
+
+  // API Key detaylarını kontrol et
+  checkAPIKeyDetails();
+
   renderCurrent();
   el.timer.textContent = fmt(state.secondsLeft);
   updateHeader();

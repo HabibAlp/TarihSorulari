@@ -9,7 +9,7 @@
   <body>
     <main class="container" id="app">
       <header class="header">
-        <h1>Tanzimat Dönemi – Quiz</h1>
+        <h1>Tanzimat Dönemi Soruları</h1>
         <p class="topic">
           1839–1878: Tanzimat & Islahat Fermanları, İdare-Hukuk-Eğitim-Basın,
           Kanun-i Esasi
@@ -87,7 +87,7 @@
       </section>
 
       <section id="resultCard" class="card result" hidden aria-live="polite">
-        <h2>Quiz Bitti ✅</h2>
+        <h2>Bitti ✅</h2>
         <p id="scoreLine">Puanınız: –</p>
         <p class="tiny muted">
           Her soru 1 dakikaydı; soru değişince sayaç sıfırlandı.
@@ -96,6 +96,15 @@
           <button id="playAgainBtn" class="btn primary" type="button">
             Tekrar Oyna
           </button>
+        </div>
+
+        <!-- AI Analysis Section -->
+        <div
+          id="aiAnalysis"
+          class="ai-analysis-container"
+          style="display: none"
+        >
+          <!-- AI analysis will be inserted here -->
         </div>
       </section>
     </main>
