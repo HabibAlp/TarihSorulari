@@ -1,3 +1,1 @@
 # TarihSorulari
-# TarihSorulari
-# TarihSorulari
