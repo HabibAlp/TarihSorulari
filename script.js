@@ -41,6 +41,7 @@ const el = {
   nextBtn: document.getElementById('nextBtn'),
   showAnalysisBtn: document.getElementById('showAnalysisBtn'),
   showSolutionBtn: document.getElementById('showSolutionBtn'),
+  tryAgainBtn: document.getElementById('tryAgainBtn'),
   feedback: document.getElementById('feedback'),
   solutionBox: document.getElementById('solutionBox'),
   solutionText: document.getElementById('solutionText'),
@@ -551,6 +552,8 @@ function renderCurrent() {
   // Butonları normal duruma getir (cevap verilene kadar)
   el.nextBtn.style.display = 'inline-block';
   el.showAnalysisBtn.style.display = 'none';
+  el.tryAgainBtn.style.display = 'none';
+  el.tryAgainBtn.disabled = false;
 
   lockChoices(false);
   startTimer();
@@ -594,6 +597,7 @@ function evaluate() {
     if (state.index === state.questions.length - 1) {
       el.nextBtn.style.display = 'none';
       el.showAnalysisBtn.style.display = 'inline-block';
+      el.showAnalysisBtn.disabled = false; // Aktif hale getir
     } else {
       el.nextBtn.disabled = false;
     }
@@ -620,37 +624,13 @@ function evaluate() {
     if (state.index === state.questions.length - 1) {
       el.nextBtn.style.display = 'none';
       el.showAnalysisBtn.style.display = 'inline-block';
+      el.showAnalysisBtn.disabled = false; // Aktif hale getir
     } else {
       el.nextBtn.disabled = false;
     }
 
-    // Add Try Again button for incorrect answers
-    if (!el.fieldset.querySelector('.try-again-btn')) {
-      const tryAgainBtn = document.createElement('button');
-      tryAgainBtn.className = 'btn secondary try-again-btn';
-      tryAgainBtn.textContent = 'Tekrar Dene';
-      tryAgainBtn.addEventListener('click', () => {
-        el.fieldset
-          .querySelectorAll('.option')
-          .forEach((opt) => opt.classList.remove('selected'));
-        el.feedback.textContent = '';
-        el.feedback.className = 'feedback';
-        el.solutionBox.hidden = true;
-        el.solutionText.innerHTML = '';
-        el.nextBtn.disabled = true;
-        el.submitBtn.disabled = true;
-        el.showSolutionBtn.disabled = true;
-        tryAgainBtn.remove();
-        lockChoices(false);
-
-        // Reset "Sıfırla" button color to normal
-        el.restartBtn.style.color = '';
-
-        // Start timer again
-        startTimer();
-      });
-      el.fieldset.appendChild(tryAgainBtn);
-    }
+    // Show Try Again button for incorrect answers
+    el.tryAgainBtn.style.display = 'inline-block';
   }
 
   el.submitBtn.disabled = true;
@@ -684,20 +664,19 @@ function showSolution() {
   if (state.index === state.questions.length - 1) {
     el.nextBtn.style.display = 'none';
     el.showAnalysisBtn.style.display = 'inline-block';
+    el.showAnalysisBtn.disabled = false; // Aktif hale getir
   } else {
     el.nextBtn.disabled = false;
   }
 
-  // Disable "Try Again" button when solution is shown
-  const tryAgainBtn = el.fieldset.querySelector('.try-again-btn');
-  if (tryAgainBtn) {
-    tryAgainBtn.disabled = true;
-  }
+  // Disable "Try Again" and "Show Solution" buttons when solution is shown
+  el.tryAgainBtn.disabled = true;
+  el.showSolutionBtn.disabled = true;
 
   // Update feedback message when solution is shown
   if (!q.options[sel].correct) {
     el.feedback.textContent =
-      'Çözüm gösterildi. Artık sonraki soruya geçebilirsiniz.';
+      'Çözüm gösterildi. Sonraki soruya geçebilirsiniz.';
     el.feedback.className = 'feedback err';
   }
 }
@@ -712,33 +691,8 @@ function handleTimeUp() {
   // Make "Sıfırla" button text red
   el.restartBtn.style.color = 'var(--err)';
 
-  // Add "Try Again" button for time up
-  if (!el.fieldset.querySelector('.try-again-btn')) {
-    const tryAgainBtn = document.createElement('button');
-    tryAgainBtn.className = 'btn secondary try-again-btn';
-    tryAgainBtn.textContent = 'Tekrar Dene';
-    tryAgainBtn.addEventListener('click', () => {
-      el.fieldset
-        .querySelectorAll('.option')
-        .forEach((opt) => opt.classList.remove('selected'));
-      el.feedback.textContent = '';
-      el.feedback.className = 'feedback';
-      el.solutionBox.hidden = true;
-      el.solutionText.innerHTML = '';
-      el.nextBtn.disabled = true;
-      el.submitBtn.disabled = true;
-      el.showSolutionBtn.disabled = true;
-      tryAgainBtn.remove();
-      lockChoices(false);
-
-      // Reset "Sıfırla" button color to normal
-      el.restartBtn.style.color = '';
-
-      // Start timer again
-      startTimer();
-    });
-    el.fieldset.appendChild(tryAgainBtn);
-  }
+  // Show "Try Again" button for time up
+  el.tryAgainBtn.style.display = 'inline-block';
 
   // Don't enable next button when time runs out - user must select an option first
 }
@@ -777,6 +731,32 @@ el.showAnalysisBtn.addEventListener('click', () => {
   el.showAnalysisBtn.style.display = 'none';
 });
 el.showSolutionBtn.addEventListener('click', () => showSolution());
+el.tryAgainBtn.addEventListener('click', () => {
+  el.fieldset
+    .querySelectorAll('.option')
+    .forEach((opt) => opt.classList.remove('selected'));
+  el.feedback.textContent = '';
+  el.feedback.className = 'feedback';
+  el.solutionBox.hidden = true;
+  el.solutionText.innerHTML = '';
+  el.nextBtn.disabled = true;
+  el.submitBtn.disabled = true;
+  el.showSolutionBtn.disabled = true;
+  el.tryAgainBtn.style.display = 'none';
+  el.tryAgainBtn.disabled = false;
+  lockChoices(false);
+
+  // Reset "Sıfırla" button color to normal
+  el.restartBtn.style.color = '';
+
+  // Start timer again
+  startTimer();
+
+  // If this is the last question, disable "Show Analysis" button
+  if (state.index === state.questions.length - 1) {
+    el.showAnalysisBtn.disabled = true;
+  }
+});
 el.playAgainBtn.addEventListener('click', () => {
   clearTimer();
   startQuiz();
@@ -852,6 +832,8 @@ function startQuiz() {
   el.nextBtn.disabled = true;
   el.nextBtn.style.display = 'inline-block';
   el.showAnalysisBtn.style.display = 'none';
+  el.tryAgainBtn.style.display = 'none';
+  el.tryAgainBtn.disabled = false;
 
   renderCurrent();
   el.timer.textContent = fmt(state.secondsLeft);

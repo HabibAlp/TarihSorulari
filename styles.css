@@ -346,12 +346,12 @@ input[type='radio']:focus-visible {
 
 /* === Hover efektleri (tüm butonlarda tutarlılık) === */
 
-/* Light mod: hover olduğunda siyah butonlar açılır */
+/* Light mod: hover olduğunda maviden turkuaza geçiş */
 .toolbar .btn:hover,
 .btn:hover {
-  background: #ffffff; /* açık zemin */
-  color: #000000; /* siyah yazı */
-  border-color: #000000; /* belirgin kenarlık */
+  background: #02b6bf; /* Turkuaz arka plan */
+  color: #ffffff; /* Beyaz yazı */
+  border-color: #02b6bf; /* Turkuaz kenarlık */
   transition: all 0.2s ease-in-out;
 }
 
