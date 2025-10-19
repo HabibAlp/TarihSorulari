@@ -68,6 +68,14 @@
           <button id="nextBtn" class="btn secondary" type="button" disabled>
             Sonraki Soru
           </button>
+          <button
+            id="showAnalysisBtn"
+            class="btn primary"
+            type="button"
+            style="display: none"
+          >
+            📊 Sınav Analizini Gör
+          </button>
           <button id="showSolutionBtn" class="btn ghost" type="button">
             Çözümü Göster
           </button>
@@ -89,12 +97,10 @@
       <section id="resultCard" class="card result" hidden aria-live="polite">
         <h2>Bitti ✅</h2>
         <p id="scoreLine">Puanınız: –</p>
-        <p class="tiny muted">
-          Her soru 1 dakikaydı; soru değişince sayaç sıfırlandı.
-        </p>
+        <p class="tiny muted"></p>
         <div class="result-actions">
           <button id="playAgainBtn" class="btn primary" type="button">
-            Tekrar Oyna
+            Soruları Tekrar Çöz
           </button>
         </div>
 

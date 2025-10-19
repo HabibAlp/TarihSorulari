@@ -23,44 +23,44 @@
 /* Dark tema - sistem temasını takip eder */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0b1215;
-    --card: #0f1a1f;
-    --text: #ffffff;
-    --muted: #9db0b8;
-    --border: #16303a;
-    --option-bg: #0e181d;
-    --primary: #3aaed8;
-    --primary-ink: #06222c;
-    --ok: #20c997;
-    --err: #ff6b6b;
-    --ring: 0 0 0 3px rgba(58, 174, 216, 0.35);
+    --bg: #1a1a1a; /* Daha yumuşak koyu gri */
+    --card: #2a2a2a; /* Daha açık kart arka planı */
+    --text: #e8e8e8; /* Yumuşak beyaz (tam beyaz değil) */
+    --muted: #a0a0a0; /* Daha yumuşak gri */
+    --border: #404040; /* Daha görünür kenarlık */
+    --option-bg: #333333; /* Daha açık seçenek arka planı */
+    --primary: #4a9eff; /* Daha yumuşak mavi */
+    --primary-ink: #1a1a1a;
+    --ok: #4ade80; /* Daha yumuşak yeşil */
+    --err: #f87171; /* Daha yumuşak kırmızı */
+    --ring: 0 0 0 3px rgba(74, 158, 255, 0.35);
 
     /* ➕ Buton temel paleti (DARK) */
-    --btn-bg: #13232a;
-    --btn-fg: #ffffff;
-    --btn-border: #214653;
+    --btn-bg: #404040; /* Daha açık buton arka planı */
+    --btn-fg: #e8e8e8; /* Yumuşak beyaz metin */
+    --btn-border: #555555; /* Daha görünür kenarlık */
   }
 }
 
-/* Dark mode option letters - empty by default, blue when selected */
+/* Dark mode option letters - softer background with better contrast */
 @media (prefers-color-scheme: dark) {
   .option-letter {
-    background: transparent;
-    border: 2px solid var(--border);
-    color: var(--text);
+    background: #f0f0f0 !important; /* Yumuşak açık gri */
+    border: 2px solid var(--border) !important;
+    color: #2a2a2a !important; /* Koyu gri yazı */
   }
   .option.selected .option-letter {
-    background: var(--primary);
-    color: #ffffff;
-    border-color: var(--primary);
+    background: var(--primary) !important;
+    color: #ffffff !important;
+    border-color: var(--primary) !important;
   }
 }
 
-/* Light: toolbar butonları “dolu” ve beyaz yazı */
+/* Light: toolbar butonları pill rengiyle aynı arka plan */
 .toolbar .btn {
-  background: var(--primary);
-  color: #ffffff;
-  border-color: transparent;
+  background: var(--option-bg);
+  color: var(--text);
+  border-color: var(--border);
 }
 
 /* Dark: toolbar butonları açık pill şeklinde kalsın */
@@ -172,6 +172,14 @@ fieldset {
 .option:hover {
   border-color: #99c2d1;
 }
+
+/* Dark mode için daha yumuşak hover efekti */
+@media (prefers-color-scheme: dark) {
+  .option:hover {
+    border-color: #666666;
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
 .option.selected {
   border-color: var(--primary);
   background: rgba(14, 165, 255, 0.05);
@@ -187,7 +195,7 @@ fieldset {
   justify-content: center;
   font-weight: 700;
   font-size: 1rem;
-  color: var(--text);
+  color: #000000; /* Light mode'da siyah yazı */
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
@@ -327,11 +335,11 @@ input[type='radio']:focus-visible {
 
 /* === Toolbar butonları tema bazlı renk değişimi === */
 
-/* Light mod (varsayılan) */
+/* Light mod (varsayılan) - pill rengiyle aynı */
 .toolbar .btn {
-  background: #000000; /* siyah arka plan */
-  color: #ffffff; /* beyaz yazı */
-  border-color: #000000; /* kenarlık da siyah */
+  background: var(--option-bg); /* pill ile aynı arka plan */
+  color: var(--text); /* normal metin rengi */
+  border-color: var(--border); /* normal kenarlık */
 }
 
 /* Dark mod - handled above */
@@ -347,13 +355,13 @@ input[type='radio']:focus-visible {
   transition: all 0.2s ease-in-out;
 }
 
-/* Dark mod: hover olduğunda beyaz butonlar kararır */
+/* Dark mod: hover olduğunda daha yumuşak geçiş */
 @media (prefers-color-scheme: dark) {
   .toolbar .btn:hover,
   .btn:hover {
-    background: #000000; /* siyah zemin */
+    background: #555555; /* Daha yumuşak koyu gri */
     color: #ffffff; /* beyaz yazı */
-    border-color: #ffffff; /* beyaz kenarlık */
+    border-color: #666666; /* Daha yumuşak kenarlık */
     transition: all 0.2s ease-in-out;
   }
 }
@@ -380,6 +388,31 @@ input[type='radio']:focus-visible {
   margin-bottom: 15px;
   line-height: 1.6;
   border-left: 4px solid var(--primary);
+}
+
+.wrong-topics {
+  margin: 15px 0;
+  padding: 15px;
+  background: rgba(220, 38, 38, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid var(--err);
+}
+
+.wrong-topics h4 {
+  margin: 0 0 10px 0;
+  color: var(--err);
+  font-size: 1rem;
+}
+
+.wrong-topics ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.wrong-topics li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+  color: var(--text);
 }
 
 .recommendations {

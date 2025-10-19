@@ -11,10 +11,6 @@ const SETTINGS_KEY = `${QUIZ_KEY}:settings`;
 const DEFAULT_SETTINGS = { fontScale: 1, tts: false };
 
 // Google Gemini API Configuration
-const GEMINI_API_KEY = 'AIzaSyCX7fDvq6hm7a1RE190Bk1c675IvLDtRcY'; // Buraya API key'inizi yazın
-// Google Cloud AI Companion API endpoint (with CORS proxy)
-const GEMINI_API_URL =
-  'https://cors-anywhere.herokuapp.com/https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 let settings = loadSettings();
 function loadSettings() {
@@ -43,6 +39,7 @@ const el = {
   fieldset: document.getElementById('optionsFieldset'),
   submitBtn: document.getElementById('submitBtn'),
   nextBtn: document.getElementById('nextBtn'),
+  showAnalysisBtn: document.getElementById('showAnalysisBtn'),
   showSolutionBtn: document.getElementById('showSolutionBtn'),
   feedback: document.getElementById('feedback'),
   solutionBox: document.getElementById('solutionBox'),
@@ -356,318 +353,7 @@ function applyFont() {
   );
 }
 
-/* ===============================
-   GOOGLE GEMINI AI ANALİZ
-==================================*/
-
-// Mevcut modelleri kontrol et
-async function checkAvailableModels() {
-  const endpoints = [
-    `https://cloudaicompanion.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`,
-    `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`,
-  ];
-
-  for (const endpoint of endpoints) {
-    try {
-      console.log('🔍 Checking models at:', endpoint);
-      const response = await fetch(endpoint);
-      const data = await response.json();
-      console.log('Available models:', data);
-      return data;
-    } catch (error) {
-      console.log('❌ Endpoint failed:', endpoint, error.message);
-    }
-  }
-
-  console.error('❌ All model check endpoints failed');
-  return null;
-}
-
-// CORS test fonksiyonu
-async function testCORS() {
-  const testEndpoints = [
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-    'https://cors-anywhere.herokuapp.com/https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-    'https://api.allorigins.win/raw?url=' +
-      encodeURIComponent(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
-      ),
-  ];
-
-  console.log('🔄 Testing CORS endpoints...');
-
-  for (const endpoint of testEndpoints) {
-    try {
-      console.log('🔍 Testing:', endpoint);
-      const response = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Test' }] }],
-        }),
-      });
-
-      if (response.ok) {
-        console.log('✅ CORS working endpoint:', endpoint);
-        return endpoint;
-      } else {
-        console.log('❌ Endpoint failed:', endpoint, response.status);
-      }
-    } catch (error) {
-      console.log('❌ CORS error:', endpoint, error.message);
-    }
-  }
-
-  console.log('❌ All CORS endpoints failed');
-  return null;
-}
-
-// API Key detaylarını kontrol et
-async function checkAPIKeyDetails() {
-  console.log('🔑 API Key:', GEMINI_API_KEY);
-  console.log('🔗 API URL:', GEMINI_API_URL);
-
-  // CORS test yap
-  const workingEndpoint = await testCORS();
-  if (workingEndpoint) {
-    console.log('🎯 Using working endpoint:', workingEndpoint);
-  }
-
-  try {
-    // Önce modelleri kontrol et
-    const models = await checkAvailableModels();
-
-    if (models && models.models) {
-      const generateContentModels = models.models.filter(
-        (m) =>
-          m.supportedGenerationMethods &&
-          m.supportedGenerationMethods.includes('generateContent')
-      );
-
-      console.log(
-        '✅ Available models for generateContent:',
-        generateContentModels
-      );
-
-      if (generateContentModels.length > 0) {
-        console.log('🎯 Recommended model:', generateContentModels[0].name);
-        return generateContentModels[0].name;
-      }
-    }
-
-    // Eğer model bulunamazsa, farklı endpoint'leri dene
-    const alternativeEndpoints = [
-      'https://cloudaicompanion.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-      'https://cloudaicompanion.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
-    ];
-
-    console.log('🔄 Testing alternative endpoints...');
-
-    for (const endpoint of alternativeEndpoints) {
-      try {
-        const testResponse = await fetch(`${endpoint}?key=${GEMINI_API_KEY}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: 'Test' }] }],
-          }),
-        });
-
-        if (testResponse.ok) {
-          console.log('✅ Working endpoint found:', endpoint);
-          return endpoint;
-        } else {
-          console.log('❌ Endpoint failed:', endpoint, testResponse.status);
-        }
-      } catch (error) {
-        console.log('❌ Endpoint error:', endpoint, error.message);
-      }
-    }
-  } catch (error) {
-    console.error('❌ API Key check failed:', error);
-  }
-
-  return null;
-}
-async function analyzeQuizResults(score, wrongAnswers) {
-  if (
-    GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY' ||
-    !GEMINI_API_KEY.startsWith('AIza')
-  ) {
-    return {
-      analysis:
-        "API key ayarlanmadı veya geçersiz format. Lütfen Google AI Studio'dan geçerli bir API key alın.",
-      recommendations: [
-        "Google AI Studio'ya gidin",
-        'Yeni API key oluşturun',
-        "API key'i script.js'e yapıştırın",
-      ],
-    };
-  }
-
-  // Önce mevcut modelleri kontrol et
-  const models = await checkAvailableModels();
-  if (models && models.models) {
-    console.log(
-      'Available models for generateContent:',
-      models.models.filter(
-        (m) =>
-          m.supportedGenerationMethods &&
-          m.supportedGenerationMethods.includes('generateContent')
-      )
-    );
-  }
-
-  try {
-    const wrongTopics = wrongAnswers.map(
-      (answer) => answer.topic || answer.question
-    );
-    const prompt = `
-Sen bir eğitim danışmanısın. Kullanıcı Tanzimat Dönemi (1839-1878) konusunda quiz çözdü ve ${score}/100 puan aldı.
-
-Yanlış cevapladığı konular: ${wrongTopics.join(', ')}
-
-Lütfen şunları analiz et:
-1. Genel performans değerlendirmesi (çok iyi/iyi/orta/zayıf)
-2. Hangi konuları tekrar çalışması gerektiği
-3. Öncelik sırasına göre çalışma önerileri
-4. Motivasyon verici kısa bir mesaj
-
-Türkçe yanıt ver ve kısa, net öneriler sun. HTML formatında yanıtla.
-    `;
-
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1024,
-        },
-        safetySettings: [
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-          {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-          {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-          {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Response Error:', errorText);
-      throw new Error(`API Error: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log('API Response:', data);
-
-    if (
-      !data.candidates ||
-      !data.candidates[0] ||
-      !data.candidates[0].content
-    ) {
-      throw new Error('Invalid API response format');
-    }
-
-    const analysis = data.candidates[0].content.parts[0].text;
-
-    return {
-      analysis: analysis,
-      recommendations: extractRecommendations(analysis),
-    };
-  } catch (error) {
-    console.error('Gemini API Error:', error);
-    console.error('API Key:', GEMINI_API_KEY);
-    console.error('Response:', error.message);
-
-    return {
-      analysis: `Analiz yapılırken bir hata oluştu: ${error.message}. API key'inizi kontrol edin.`,
-      recommendations: [
-        'API key formatını kontrol edin',
-        "Google AI Studio'dan yeni key alın",
-        'İnternet bağlantınızı kontrol edin',
-      ],
-    };
-  }
-}
-
-function extractRecommendations(analysis) {
-  // Analiz metninden önerileri çıkar
-  const lines = analysis.split('\n').filter((line) => line.trim());
-  const recommendations = [];
-
-  lines.forEach((line) => {
-    if (
-      line.includes('•') ||
-      line.includes('-') ||
-      line.includes('1.') ||
-      line.includes('2.')
-    ) {
-      const cleanLine = line.replace(/^[\d\-\•\s]+/, '').trim();
-      if (cleanLine.length > 0) {
-        recommendations.push(cleanLine);
-      }
-    }
-  });
-
-  return recommendations.length > 0
-    ? recommendations
-    : ['Detaylı analiz için tekrar deneyin'];
-}
-
-function showAIAnalysis(score, wrongAnswers) {
-  const analysisContainer = document.getElementById('aiAnalysis');
-  if (!analysisContainer) return Promise.reject('Analysis container not found');
-
-  analysisContainer.innerHTML =
-    '<div class="loading">🤖 Analiz yapılıyor...</div>';
-  analysisContainer.style.display = 'block';
-
-  return analyzeQuizResults(score, wrongAnswers).then((result) => {
-    analysisContainer.innerHTML = `
-      <div class="ai-analysis">
-        <h3>🤖 Yapay Zeka Analizi</h3>
-        <div class="analysis-content">${result.analysis}</div>
-        <div class="recommendations">
-          <h4>📚 Öneriler:</h4>
-          <ul>
-            ${result.recommendations.map((rec) => `<li>${rec}</li>`).join('')}
-          </ul>
-        </div>
-      </div>
-    `;
-  });
-}
-
-function showBasicAnalysis(score, wrongAnswers) {
+function showBasicAnalysis(score) {
   const analysisContainer = document.getElementById('aiAnalysis');
   if (!analysisContainer) return;
 
@@ -692,7 +378,7 @@ function showBasicAnalysis(score, wrongAnswers) {
     'tan-10': 'Tanzimat Dönemi Sonuçları',
   };
 
-  const wrongTopics = wrongAnswers
+  const wrongTopics = state.wrongAnswers
     .map((answer) => answer.topic)
     .filter((topic, index, arr) => arr.indexOf(topic) === index)
     .map((topic) => topicNames[topic] || topic); // ID varsa ismi, yoksa ID'yi kullan
@@ -723,14 +409,12 @@ function showBasicAnalysis(score, wrongAnswers) {
         <p><strong>Genel Değerlendirme:</strong> ${performance}</p>
         <p><strong>Puanınız:</strong> ${score}/100</p>
         <p><strong>Detaylı Analiz:</strong> ${detailedAnalysis}</p>
-        ${
-          wrongTopics.length > 0
-            ? `<p><strong>Tekrar Çalışmanız Gereken Konular:</strong></p>`
-            : ''
-        }
       </div>
-      <div class="recommendations">
-        <h4>📚 Öneriler:</h4>
+      ${
+        wrongTopics.length > 0
+          ? `
+      <div class="wrong-topics">
+        <h4>📚 Tekrar Çalışmanız Gereken Konular:</h4>
         <ul>
           ${wrongTopics
             .map(
@@ -738,10 +422,19 @@ function showBasicAnalysis(score, wrongAnswers) {
                 `<li><strong>${topic}</strong> konusunu tekrar çalışın</li>`
             )
             .join('')}
+        </ul>
+      </div>
+      `
+          : ''
+      }
+      <div class="recommendations">
+        <h4>📚 Öneriler:</h4>
+        <ul>
           <li>Quiz'i tekrar çözerek pratik yapın</li>
           <li>Yanlış cevapladığınız soruların açıklamalarını inceleyin</li>
           <li>Her konuyu çalıştıktan sonra o konuya özel soruları tekrar çözün</li>
           <li>Kronolojik sırayı takip ederek çalışın (1839-1878)</li>
+          <li>Tanzimat Dönemi temel kavramlarını tekrar gözden geçirin</li>
         </ul>
       </div>
     </div>
@@ -854,6 +547,11 @@ function renderCurrent() {
   el.nextBtn.disabled = true;
   el.submitBtn.disabled = true;
   el.showSolutionBtn.disabled = true;
+
+  // Butonları normal duruma getir (cevap verilene kadar)
+  el.nextBtn.style.display = 'inline-block';
+  el.showAnalysisBtn.style.display = 'none';
+
   lockChoices(false);
   startTimer();
   updateHeader();
@@ -891,18 +589,19 @@ function evaluate() {
     state.score += POINTS_PER_CORRECT;
     el.feedback.textContent = 'Doğru! 👏';
     el.feedback.className = 'feedback ok';
-    el.nextBtn.disabled = false;
+
+    // 10. soruya geldiğinde "Sınav Analizini Gör" butonunu göster
+    if (state.index === state.questions.length - 1) {
+      el.nextBtn.style.display = 'none';
+      el.showAnalysisBtn.style.display = 'inline-block';
+    } else {
+      el.nextBtn.disabled = false;
+    }
+
     el.solutionText.innerHTML = `<strong>Doğru cevap:</strong> ${q.options[correctIdx].text}<br><br>${q.options[correctIdx].explain}`;
     el.solutionBox.hidden = false;
   } else {
-    // For incorrect answers, don't show hints or solution immediately
-    el.feedback.textContent =
-      'Lütfen tekrar deneyin veya çözümü görmek için "Çözümü Göster" butonuna tıklayın.';
-    el.feedback.className = 'feedback err';
-    el.solutionBox.hidden = true; // Don't show solution immediately for incorrect answers
-    el.solutionText.innerHTML = '';
-
-    // Track wrong answer for AI analysis
+    // Track wrong answer for analysis
     state.wrongAnswers.push({
       question: q.q,
       topic: q.id,
@@ -910,8 +609,20 @@ function evaluate() {
       correctAnswer: q.options[correctIdx].text,
     });
 
-    // Enable "Sonraki Soru" button for incorrect answers too
-    el.nextBtn.disabled = false;
+    // For incorrect answers, don't show hints or solution immediately
+    el.feedback.textContent =
+      'Cevabınızı gözden geçirmek için tekrar deneyebilir veya çözümü görmek için "Çözümü Göster" butonuna tıklayabilirsiniz.';
+    el.feedback.className = 'feedback err';
+    el.solutionBox.hidden = true; // Don't show solution immediately for incorrect answers
+    el.solutionText.innerHTML = '';
+
+    // 10. soruya geldiğinde "Sınav Analizini Gör" butonunu göster
+    if (state.index === state.questions.length - 1) {
+      el.nextBtn.style.display = 'none';
+      el.showAnalysisBtn.style.display = 'inline-block';
+    } else {
+      el.nextBtn.disabled = false;
+    }
 
     // Add Try Again button for incorrect answers
     if (!el.fieldset.querySelector('.try-again-btn')) {
@@ -968,7 +679,14 @@ function showSolution() {
 
   el.solutionText.innerHTML = `<strong>Doğru cevap:</strong> ${q.options[correctIdx].text}<br><br>${q.options[correctIdx].explain}`;
   el.solutionBox.hidden = false;
-  el.nextBtn.disabled = false;
+
+  // 10. soruya geldiğinde "Sınav Analizini Gör" butonunu göster
+  if (state.index === state.questions.length - 1) {
+    el.nextBtn.style.display = 'none';
+    el.showAnalysisBtn.style.display = 'inline-block';
+  } else {
+    el.nextBtn.disabled = false;
+  }
 
   // Disable "Try Again" button when solution is shown
   const tryAgainBtn = el.fieldset.querySelector('.try-again-btn');
@@ -1037,18 +755,9 @@ function nextQuestion() {
 function finishQuiz() {
   clearTimer();
   lockChoices(true);
-  el.resultCard.hidden = false;
-  el.scoreLine.textContent = `Puanınız: ${state.score} / 100`;
 
-  // Show AI analysis (with fallback to basic analysis)
-  // Temporarily using basic analysis due to CORS issues
-  showBasicAnalysis(state.score, state.wrongAnswers);
-
-  // Uncomment below to try AI analysis again
-  // showAIAnalysis(state.score, state.wrongAnswers).catch((error) => {
-  //   console.error('AI Analysis failed, showing basic analysis:', error);
-  //   showBasicAnalysis(state.score, state.wrongAnswers);
-  // });
+  // Don't show result card automatically - user will click "Sınav Analizini Gör" to see it
+  el.resultCard.hidden = true;
 }
 
 /* ===============================
@@ -1060,6 +769,13 @@ el.restartBtn.addEventListener('click', () => {
 });
 el.submitBtn.addEventListener('click', () => evaluate());
 el.nextBtn.addEventListener('click', () => nextQuestion());
+el.showAnalysisBtn.addEventListener('click', () => {
+  // First show the result card, then show analysis
+  el.resultCard.hidden = false;
+  el.scoreLine.textContent = `Puanınız: ${state.score} / 100`;
+  showBasicAnalysis(state.score);
+  el.showAnalysisBtn.style.display = 'none';
+});
 el.showSolutionBtn.addEventListener('click', () => showSolution());
 el.playAgainBtn.addEventListener('click', () => {
   clearTimer();
@@ -1132,8 +848,10 @@ function startQuiz() {
   // Reset "Sıfırla" button color to normal
   el.restartBtn.style.color = '';
 
-  // API Key detaylarını kontrol et
-  checkAPIKeyDetails();
+  // Reset button states
+  el.nextBtn.disabled = true;
+  el.nextBtn.style.display = 'inline-block';
+  el.showAnalysisBtn.style.display = 'none';
 
   renderCurrent();
   el.timer.textContent = fmt(state.secondsLeft);
